@@ -66,5 +66,4 @@ e rode o `05` (e depois o `08`, se ainda não tiver rodado) de novo.
 - Não existe tabela de "papéis" separada para avaliador — avaliar é uma capacidade temporária do
   participante inscrito e com presença validada (RN-13), verificada por trigger.
 - `Visitante` não tem registro em `usuarios`: ele acessa o site público sem autenticação (RF-10/RF-11).
-- Este schema é um ponto de partida — a especificação deixa a modelagem de classes a cargo da
-  equipe; adapte nomes/tabelas conforme o modelo de domínio que vocês desenharem.
+- Este schema é um ponto de partida
