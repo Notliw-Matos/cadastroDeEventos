@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Gestão de Eventos</title>
+</head>
+<body>
+
+<h1>Plataforma de Gestão de Eventos</h1>
+<p id="sessao">Não logado.</p>
+<p id="mensagem"></p>
+
+<h2>Cadastro / Login</h2>
+Nome: <input id="campo-nome"><br>
+E-mail: <input id="campo-email"><br>
+Senha: <input id="campo-senha" type="password"><br>
+<button onclick="cadastrar()">Cadastrar</button>
+<button onclick="login()">Entrar</button>
+<button onclick="sair()">Sair</button>
+
+<h2>Eventos publicados</h2>
+<div id="lista-eventos">Carregando...</div>
+
+<h2>Programação</h2>
+<div id="lista-atividades"></div>
+
+<h2>Minha agenda</h2>
+<button onclick="verMinhaAgenda()">Ver minha agenda</button>
+<div id="lista-agenda"></div>
+
+<h2>Meu código de presença</h2>
+<button onclick="gerarMeuQrCode()">Gerar meu QR</button>
+<div id="meu-qrcode"></div>
+
+<h2>Registrar presença (organizador)</h2>
+Código lido do QR: <input id="campo-codigo-checkin"><br>
+Atividade (id): <input id="campo-atividade-checkin"><br>
+Tipo:
+<select id="campo-tipo-checkin">
+  <option value="CHECK_IN">Entrada</option>
+  <option value="CHECK_OUT">Saída</option>
+</select><br>
+<button onclick="registrarCheckin()">Registrar via QR</button>
+<p id="resultado-checkin"></p>
+
+<h3>Lançamento manual (sem QR)</h3>
+Participante (id): <input id="campo-participante-manual"><br>
+Atividade (id): <input id="campo-atividade-manual"><br>
+<button onclick="registrarManual()">Registrar manualmente</button>
+<p id="resultado-manual"></p>
+
+<h3>Consultar situação de presença</h3>
+Inscrição (id): <input id="campo-inscricao-situacao"><br>
+<button onclick="consultarSituacao()">Consultar</button>
+<p id="resultado-situacao"></p>
+
+<script src="vendor/qrcode.js"></script>
+
+<script>
+// Ajuste se a API estiver rodando em outra porta.
+const API_BASE = "http://127.0.0.1:8080";
+
+let token = null;
+
+function mostrar(texto) {
+  document.getElementById("mensagem").textContent = texto;
+}
+
+async function chamar(caminho, opcoes = {}) {
+  const cabecalhos = { "Content-Type": "application/json" };
+  if (token) cabecalhos["Authorization"] = "Bearer " + token;
+  const resposta = await fetch(API_BASE + caminho, { ...opcoes, headers: cabecalhos });
+  const corpo = await resposta.json().catch(() => ({}));
+  if (!resposta.ok) throw new Error(corpo.mensagem || ("Erro HTTP " + resposta.status));
+  return corpo;
+}
+
+function campoNome() { return document.getElementById("campo-nome").value; }
+function campoEmail() { return document.getElementById("campo-email").value; }
+function campoSenha() { return document.getElementById("campo-senha").value; }
+
+async function cadastrar() {
+  try {
+    await chamar("/api/usuarios", { method: "POST",
+      body: JSON.stringify({ nome: campoNome(), email: campoEmail(), senha: campoSenha() }) });
+    mostrar("Cadastro feito. Agora clique em Entrar.");
+  } catch (e) { mostrar(e.message); }
+}
+
+async function login() {
+  try {
+    const resposta = await chamar("/api/sessoes", { method: "POST",
+      body: JSON.stringify({ email: campoEmail(), senha: campoSenha() }) });
+    token = resposta.token;
+    document.getElementById("sessao").textContent = "Logado como " + resposta.nome + " (" + resposta.perfil + ")";
+    mostrar("Login ok.");
+  } catch (e) { mostrar(e.message); }
+}
+
+function sair() {
+  token = null;
+  document.getElementById("sessao").textContent = "Não logado.";
+  mostrar("Sessão encerrada.");
+}
+
+async function carregarEventos() {
+  const div = document.getElementById("lista-eventos");
+  try {
+    const eventos = await chamar("/api/eventos");
+    div.innerHTML = "";
+    eventos.forEach(ev => {
+      const p = document.createElement("p");
+      p.innerHTML = "<b>" + ev.titulo + "</b> — " + ev.inicio + " — ";
+      const botao = document.createElement("button");
+      botao.textContent = "Ver programação";
+      botao.onclick = () => verProgramacao(ev.id);
+      p.appendChild(botao);
+      div.appendChild(p);
+    });
+  } catch (e) {
+    div.textContent = "Não deu para carregar os eventos: " + e.message + " (a API está rodando?)";
+  }
+}
+
+async function verProgramacao(eventoId) {
+  const div = document.getElementById("lista-atividades");
+  try {
+    const atividades = await chamar("/api/eventos/" + eventoId + "/atividades");
+    div.innerHTML = "";
+    atividades.forEach(a => {
+      const p = document.createElement("p");
+      p.innerHTML = "<b>" + a.titulo + "</b> (" + a.tipo + ") — " + a.inicio +
+        " — " + (a.temVaga ? "tem vaga" : "sem vaga") + " — ";
+      const botao = document.createElement("button");
+      botao.textContent = "Inscrever-se";
+      botao.disabled = !a.temVaga;
+      botao.onclick = () => inscrever(a.id);
+      p.appendChild(botao);
+      div.appendChild(p);
+    });
+  } catch (e) { div.textContent = e.message; }
+}
+
+async function inscrever(atividadeId) {
+  if (!token) { mostrar("Faça login antes de se inscrever."); return; }
+  try {
+    const resposta = await chamar("/api/inscricoes", { method: "POST", body: JSON.stringify({ atividadeId }) });
+    mostrar("Inscrição confirmada!" + (resposta.avisos && resposta.avisos.length
+      ? " Aviso: " + resposta.avisos.join(" ") : ""));
+  } catch (e) { mostrar(e.message); }
+}
+
+async function verMinhaAgenda() {
+  if (!token) { mostrar("Faça login antes de ver sua agenda."); return; }
+  const div = document.getElementById("lista-agenda");
+  try {
+    const itens = await chamar("/api/agenda");
+    if (itens.length === 0) { div.textContent = "Você ainda não tem atividades na agenda."; return; }
+    div.innerHTML = "";
+    itens.forEach(item => {
+      const p = document.createElement("p");
+      p.textContent = item.inicio + " — " + item.titulo + " (" + item.situacaoInscricao + ")";
+      div.appendChild(p);
+    });
+  } catch (e) { div.textContent = e.message; }
+}
+
+async function gerarMeuQrCode() {
+  if (!token) { mostrar("Faça login antes de gerar seu código."); return; }
+  try {
+    const resposta = await chamar("/api/frequencia/meu-codigo");
+    const qr = qrcode(0, "M");
+    qr.addData(resposta.codigo);
+    qr.make();
+    document.getElementById("meu-qrcode").innerHTML = qr.createSvgTag(4);
+    mostrar("Pronto. Mostre este QR para o organizador escanear/ler.");
+  } catch (e) { mostrar(e.message); }
+}
+
+async function registrarCheckin() {
+  if (!token) { mostrar("Faça login antes."); return; }
+  const resultado = document.getElementById("resultado-checkin");
+  try {
+    const corpo = {
+      codigo: document.getElementById("campo-codigo-checkin").value,
+      atividadeId: document.getElementById("campo-atividade-checkin").value,
+      tipo: document.getElementById("campo-tipo-checkin").value
+    };
+    await chamar("/api/frequencia/checkin", { method: "POST", body: JSON.stringify(corpo) });
+    resultado.textContent = "Presença registrada!";
+  } catch (e) { resultado.textContent = e.message; }
+}
+
+async function registrarManual() {
+  if (!token) { mostrar("Faça login antes."); return; }
+  const resultado = document.getElementById("resultado-manual");
+  try {
+    const corpo = {
+      participanteId: document.getElementById("campo-participante-manual").value,
+      atividadeId: document.getElementById("campo-atividade-manual").value
+    };
+    await chamar("/api/frequencia/manual", { method: "POST", body: JSON.stringify(corpo) });
+    resultado.textContent = "Presença registrada manualmente!";
+  } catch (e) { resultado.textContent = e.message; }
+}
+
+async function consultarSituacao() {
+  if (!token) { mostrar("Faça login antes."); return; }
+  const resultado = document.getElementById("resultado-situacao");
+  try {
+    const inscricaoId = document.getElementById("campo-inscricao-situacao").value;
+    const resposta = await chamar("/api/frequencia/" + inscricaoId + "/situacao");
+    resultado.textContent = resposta.presente ? "Presente" : "Ainda não presente";
+  } catch (e) { resultado.textContent = e.message; }
+}
+
+carregarEventos();
+</script>
+</body>
+</html>
