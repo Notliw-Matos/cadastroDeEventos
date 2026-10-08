@@ -1,0 +1,8 @@
+# Saída de compilação: não versionar
+bin/
+out/
+*.class
+
+# Segredos: nunca versionar
+.env
+*.env
