@@ -2,216 +2,573 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Gestão de Eventos</title>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, Arial, sans-serif; margin: 0; background: #f3f4f6; color: #1f2937; line-height: 1.4; }
+  header { background: #1e3a8a; color: #fff; padding: 12px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.2rem; margin: 0; flex: 1; }
+  #sessao { font-size: .9rem; }
+  nav { background: #fff; border-bottom: 1px solid #d1d5db; padding: 0 16px; display: flex; gap: 4px; }
+  nav button { background: none; border: none; border-bottom: 3px solid transparent; padding: 12px 14px; font-size: 1rem; cursor: pointer; color: #4b5563; }
+  nav button.ativa { border-bottom-color: #1e3a8a; color: #1e3a8a; font-weight: 600; }
+  main { max-width: 900px; margin: 0 auto; padding: 16px; }
+  .card { background: #fff; border: 1px solid #d1d5db; border-radius: 8px; padding: 16px; margin-bottom: 16px; }
+  .card h2 { font-size: 1.1rem; margin: 0 0 4px; }
+  .ajuda { color: #6b7280; font-size: .9rem; margin: 0 0 12px; }
+  label { display: block; font-size: .9rem; margin: 10px 0 4px; font-weight: 600; }
+  input, select { width: 100%; max-width: 420px; padding: 8px; border: 1px solid #9ca3af; border-radius: 6px; font-size: 1rem; }
+  button { padding: 8px 14px; border: 1px solid #1e3a8a; background: #1e3a8a; color: #fff; border-radius: 6px; font-size: .95rem; cursor: pointer; }
+  button.sec { background: #fff; color: #1e3a8a; }
+  button.mini { padding: 1px 8px; font-size: .8rem; background: #fff; color: #1e3a8a; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .linha-botoes { margin-top: 12px; display: flex; flex-wrap: wrap; gap: 8px; }
+  .item { border-top: 1px solid #e5e7eb; padding: 10px 0; }
+  .item:first-of-type { border-top: none; }
+  .item .titulo { font-weight: 600; }
+  .id { display: block; font-size: .8rem; color: #6b7280; margin-top: 2px; }
+  .id code { background: #f3f4f6; padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+  .etiqueta { font-size: .75rem; background: #e0e7ff; color: #3730a3; padding: 1px 8px; border-radius: 10px; margin-left: 6px; }
+  .semvaga { background: #fee2e2; color: #991b1b; }
+  #mensagem { margin: 0 0 16px; padding: 10px 12px; border-radius: 6px; display: none; }
+  #mensagem.ok { display: block; background: #dcfce7; color: #166534; border: 1px solid #86efac; }
+  #mensagem.erro { display: block; background: #fee2e2; color: #991b1b; border: 1px solid #fca5a5; }
+  .resultado { margin: 10px 0 0; font-size: .95rem; min-height: 1.2em; }
+  .resultado.ok { color: #166534; }
+  .resultado.erro { color: #991b1b; }
+  #meu-qrcode svg { width: 180px; height: 180px; }
+  .codigo-qr { word-break: break-all; font-size: .85rem; }
+  .oculto { display: none !important; }
+</style>
 </head>
 <body>
 
-<h1>Plataforma de Gestão de Eventos</h1>
-<p id="sessao">Não logado.</p>
-<p id="mensagem"></p>
+<header>
+  <h1>Plataforma de Gestão de Eventos</h1>
+  <span id="sessao">Não logado</span>
+  <button id="btn-sair" class="sec oculto" onclick="sair()">Sair</button>
+</header>
 
-<h2>Cadastro / Login</h2>
-Nome: <input id="campo-nome"><br>
-E-mail: <input id="campo-email"><br>
-Senha: <input id="campo-senha" type="password"><br>
-<button onclick="cadastrar()">Cadastrar</button>
-<button onclick="login()">Entrar</button>
-<button onclick="sair()">Sair</button>
+<nav>
+  <button id="tab-eventos" class="ativa" onclick="abrirAba('eventos')">Eventos</button>
+  <button id="tab-participante" class="oculto" onclick="abrirAba('participante')">Minha área</button>
+  <button id="tab-organizador" class="oculto" onclick="abrirAba('organizador')">Painel do organizador</button>
+</nav>
 
-<h2>Eventos publicados</h2>
-<div id="lista-eventos">Carregando...</div>
+<main>
+  <div id="mensagem" role="status"></div>
 
-<h2>Programação</h2>
-<div id="lista-atividades"></div>
+  <!-- ============ ABA: EVENTOS (pública) ============ -->
+  <section id="aba-eventos" class="aba">
 
-<h2>Minha agenda</h2>
-<button onclick="verMinhaAgenda()">Ver minha agenda</button>
-<div id="lista-agenda"></div>
+    <div id="card-login" class="card">
+      <h2>Entrar ou cadastrar</h2>
+      <p class="ajuda">Para se inscrever ou usar o painel, entre com sua conta. Quem se cadastra aqui vira participante.</p>
+      <label for="campo-nome">Nome (só para cadastrar)</label>
+      <input id="campo-nome" autocomplete="name">
+      <label for="campo-email">E-mail</label>
+      <input id="campo-email" type="email" autocomplete="username">
+      <label for="campo-senha">Senha</label>
+      <input id="campo-senha" type="password" autocomplete="current-password">
+      <div class="linha-botoes">
+        <button onclick="login()">Entrar</button>
+        <button class="sec" onclick="cadastrar()">Cadastrar</button>
+      </div>
+    </div>
 
-<h2>Meu código de presença</h2>
-<button onclick="gerarMeuQrCode()">Gerar meu QR</button>
-<div id="meu-qrcode"></div>
+    <div class="card">
+      <h2>Eventos publicados</h2>
+      <div id="lista-eventos">Carregando...</div>
+    </div>
 
-<h2>Registrar presença (organizador)</h2>
-Código lido do QR: <input id="campo-codigo-checkin"><br>
-Atividade (id): <input id="campo-atividade-checkin"><br>
-Tipo:
-<select id="campo-tipo-checkin">
-  <option value="CHECK_IN">Entrada</option>
-  <option value="CHECK_OUT">Saída</option>
-</select><br>
-<button onclick="registrarCheckin()">Registrar via QR</button>
-<p id="resultado-checkin"></p>
+    <div class="card">
+      <h2>Programação</h2>
+      <div id="lista-atividades"><span class="ajuda">Escolha um evento acima para ver as atividades.</span></div>
+    </div>
+  </section>
 
-<h3>Lançamento manual (sem QR)</h3>
-Participante (id): <input id="campo-participante-manual"><br>
-Atividade (id): <input id="campo-atividade-manual"><br>
-<button onclick="registrarManual()">Registrar manualmente</button>
-<p id="resultado-manual"></p>
+  <!-- ============ ABA: PARTICIPANTE ============ -->
+  <section id="aba-participante" class="aba oculto">
 
-<h3>Consultar situação de presença</h3>
-Inscrição (id): <input id="campo-inscricao-situacao"><br>
-<button onclick="consultarSituacao()">Consultar</button>
-<p id="resultado-situacao"></p>
+    <div class="card">
+      <h2>Minha agenda</h2>
+      <p class="ajuda">Atividades em que você está inscrito, em ordem de horário.</p>
+      <div id="lista-agenda"></div>
+      <div class="linha-botoes"><button class="sec" onclick="verMinhaAgenda()">Atualizar agenda</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Meu código de presença (QR)</h2>
+      <p class="ajuda">Mostre este QR ao organizador. O texto abaixo dele é o mesmo código, caso o organizador prefira colar.</p>
+      <div id="meu-qrcode"></div>
+      <div id="meu-codigo-texto" class="codigo-qr"></div>
+      <div class="linha-botoes"><button onclick="gerarMeuQrCode()">Gerar meu QR</button></div>
+    </div>
+
+    <div class="card">
+      <h2>Minhas inscrições (desta sessão)</h2>
+      <p class="ajuda">Aqui aparece o ID de cada inscrição feita agora. Você pode ver se sua presença já foi validada.</p>
+      <div id="lista-inscricoes"><span class="ajuda">Nenhuma inscrição feita nesta sessão.</span></div>
+      <p id="resultado-situacao-part" class="resultado"></p>
+    </div>
+  </section>
+
+  <!-- ============ ABA: ORGANIZADOR ============ -->
+  <section id="aba-organizador" class="aba oculto">
+
+    <div class="card">
+      <h2>1. Escolha o evento e a atividade</h2>
+      <p class="ajuda">Os passos abaixo usam a atividade escolhida aqui. Só aparecem eventos publicados.</p>
+      <label for="sel-evento">Evento</label>
+      <select id="sel-evento" onchange="org_carregarAtividades()"></select>
+      <label for="sel-atividade">Atividade</label>
+      <select id="sel-atividade" onchange="org_atividadeMudou()"></select>
+      <span id="org-id-atividade" class="id"></span>
+    </div>
+
+    <div class="card">
+      <h2>2. Registrar presença pelo QR</h2>
+      <p class="ajuda">O participante gera o QR na aba "Minha área". Cole aqui o código que aparece abaixo do QR dele.</p>
+      <label for="campo-codigo-checkin">Código do QR</label>
+      <input id="campo-codigo-checkin" autocomplete="off">
+      <label for="campo-tipo-checkin">Tipo</label>
+      <select id="campo-tipo-checkin">
+        <option value="CHECK_IN">Entrada</option>
+        <option value="CHECK_OUT">Saída</option>
+      </select>
+      <div class="linha-botoes"><button onclick="registrarCheckin()">Registrar via QR</button></div>
+      <p id="resultado-checkin" class="resultado"></p>
+    </div>
+
+    <div class="card">
+      <h2>3. Lançamento manual (sem QR)</h2>
+      <p class="ajuda">Carregue a lista de inscritos da atividade e escolha a pessoa. A lista vem do relatório de inscrições.</p>
+      <div class="linha-botoes"><button class="sec" onclick="org_carregarInscritos()">Carregar inscritos</button></div>
+      <label for="sel-participante">Participante</label>
+      <select id="sel-participante"><option value="">(carregue os inscritos)</option></select>
+      <label for="campo-participante-manual">ou cole o ID do participante</label>
+      <input id="campo-participante-manual" autocomplete="off" placeholder="opcional">
+      <div class="linha-botoes"><button onclick="registrarManual()">Registrar manualmente</button></div>
+      <p id="resultado-manual" class="resultado"></p>
+    </div>
+
+    <div class="card">
+      <h2>4. Consultar situação de presença</h2>
+      <p class="ajuda">Use o ID da inscrição. O participante o vê na aba "Minha área", em "Minhas inscrições".</p>
+      <label for="campo-inscricao-situacao">ID da inscrição</label>
+      <input id="campo-inscricao-situacao" autocomplete="off">
+      <div class="linha-botoes"><button onclick="consultarSituacao()">Consultar</button></div>
+      <p id="resultado-situacao" class="resultado"></p>
+    </div>
+
+    <div class="card">
+      <h2>5. Relatórios (CSV)</h2>
+      <p class="ajuda">Baixa o relatório da atividade escolhida no passo 1.</p>
+      <div class="linha-botoes">
+        <button class="sec" onclick="baixarRelatorio('inscricoes')">Relatório de inscritos</button>
+        <button class="sec" onclick="baixarRelatorio('frequencia')">Relatório de frequência</button>
+      </div>
+      <p id="resultado-relatorio" class="resultado"></p>
+    </div>
+  </section>
+</main>
 
 <script src="vendor/qrcode.js"></script>
 
 <script>
 // Ajuste se a API estiver rodando em outra porta.
 const API_BASE = "http://127.0.0.1:8080";
+const UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
 let token = null;
+let usuario = null;            // { id, nome, email, perfil }
+let eventoAberto = null;       // evento cuja programação está na tela
+let inscricoesDaSessao = [];   // { titulo, id }
 
-function mostrar(texto) {
-  document.getElementById("mensagem").textContent = texto;
+// ---------- utilidades ----------
+
+const $ = id => document.getElementById(id);
+
+// Cria elementos sem usar innerHTML (dados da API entram sempre como texto).
+function el(tag, atributos = {}, ...filhos) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(atributos)) {
+    if (k === "class") e.className = v;
+    else if (k === "texto") e.textContent = v;
+    else if (k.startsWith("on")) e[k] = v;
+    else e.setAttribute(k, v);
+  }
+  filhos.forEach(f => e.append(f));
+  return e;
+}
+
+function mostrar(texto, tipo = "ok") {
+  const m = $("mensagem");
+  m.textContent = texto;
+  m.className = tipo;
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function resultado(idCampo, texto, tipo = "ok") {
+  const p = $(idCampo);
+  p.textContent = texto;
+  p.className = "resultado " + tipo;
+}
+
+function formatarData(iso) {
+  if (!iso) return "";
+  const d = new Date(iso);
+  return isNaN(d) ? iso : d.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+}
+
+async function copiar(texto, botao) {
+  try {
+    await navigator.clipboard.writeText(texto);
+  } catch (e) {
+    const t = document.createElement("textarea");
+    t.value = texto;
+    document.body.append(t);
+    t.select();
+    document.execCommand("copy");
+    t.remove();
+  }
+  const original = botao.textContent;
+  botao.textContent = "copiado!";
+  setTimeout(() => { botao.textContent = original; }, 1200);
+}
+
+// Mostra "ID da atividade: xxxx [copiar]"
+function blocoId(rotulo, id) {
+  return el("span", { class: "id" },
+    rotulo + ": ", el("code", { texto: id }), " ",
+    el("button", { class: "mini", type: "button", texto: "copiar", onclick: ev => copiar(id, ev.target) }));
+}
+
+function traduzirErro(status, mensagem) {
+  if (mensagem && mensagem.includes("Invalid UUID")) {
+    return "ID inválido. Use o ID (um código longo com hífens), não o nome nem o e-mail.";
+  }
+  if (mensagem) return mensagem;
+  if (status === 401) return "Faça login para continuar.";
+  if (status === 403) return "Você não tem permissão para esta ação.";
+  return "Erro HTTP " + status;
+}
+
+function erroDeRede() {
+  return new Error("Não consegui falar com a API em " + API_BASE + ". Ela está rodando?");
 }
 
 async function chamar(caminho, opcoes = {}) {
   const cabecalhos = { "Content-Type": "application/json" };
   if (token) cabecalhos["Authorization"] = "Bearer " + token;
-  const resposta = await fetch(API_BASE + caminho, { ...opcoes, headers: cabecalhos });
+  let resposta;
+  try {
+    resposta = await fetch(API_BASE + caminho, { ...opcoes, headers: cabecalhos });
+  } catch (e) { throw erroDeRede(); }
   const corpo = await resposta.json().catch(() => ({}));
-  if (!resposta.ok) throw new Error(corpo.mensagem || ("Erro HTTP " + resposta.status));
+  if (!resposta.ok) throw new Error(traduzirErro(resposta.status, corpo.mensagem));
   return corpo;
 }
 
-function campoNome() { return document.getElementById("campo-nome").value; }
-function campoEmail() { return document.getElementById("campo-email").value; }
-function campoSenha() { return document.getElementById("campo-senha").value; }
+// Para respostas que não são JSON (CSV dos relatórios).
+async function buscarArquivo(caminho) {
+  let resposta;
+  try {
+    resposta = await fetch(API_BASE + caminho, { headers: { "Authorization": "Bearer " + token } });
+  } catch (e) { throw erroDeRede(); }
+  if (!resposta.ok) {
+    const corpo = await resposta.json().catch(() => ({}));
+    throw new Error(traduzirErro(resposta.status, corpo.mensagem));
+  }
+  return resposta;
+}
+
+function exigirUuid(valor, nomeCampo) {
+  if (!UUID_RE.test((valor || "").trim())) {
+    throw new Error(nomeCampo + " inválido ou vazio. Escolha na lista ou cole o ID completo.");
+  }
+  return valor.trim();
+}
+
+function ehOrganizador() { return usuario && (usuario.perfil === "ORGANIZADOR" || usuario.perfil === "ADMINISTRADOR"); }
+function ehParticipante() { return usuario && usuario.perfil === "PARTICIPANTE"; }
+
+// ---------- abas e tela conforme o perfil ----------
+
+function abrirAba(nome) {
+  document.querySelectorAll(".aba").forEach(s => s.classList.add("oculto"));
+  document.querySelectorAll("nav button").forEach(b => b.classList.remove("ativa"));
+  $("aba-" + nome).classList.remove("oculto");
+  $("tab-" + nome).classList.add("ativa");
+  if (nome === "participante") verMinhaAgenda();
+  if (nome === "organizador") org_carregarEventos();
+}
+
+function atualizarTela() {
+  const logado = !!usuario;
+  $("sessao").textContent = logado ? usuario.nome + " (" + usuario.perfil + ")" : "Não logado";
+  $("btn-sair").classList.toggle("oculto", !logado);
+  $("card-login").classList.toggle("oculto", logado);
+  $("tab-participante").classList.toggle("oculto", !ehParticipante());
+  $("tab-organizador").classList.toggle("oculto", !ehOrganizador());
+  abrirAba("eventos");
+  if (eventoAberto) verProgramacao(eventoAberto); // atualiza os botões de inscrição
+}
+
+// ---------- cadastro / login ----------
 
 async function cadastrar() {
   try {
     await chamar("/api/usuarios", { method: "POST",
-      body: JSON.stringify({ nome: campoNome(), email: campoEmail(), senha: campoSenha() }) });
+      body: JSON.stringify({ nome: $("campo-nome").value, email: $("campo-email").value, senha: $("campo-senha").value }) });
     mostrar("Cadastro feito. Agora clique em Entrar.");
-  } catch (e) { mostrar(e.message); }
+  } catch (e) { mostrar(e.message, "erro"); }
 }
 
 async function login() {
   try {
-    const resposta = await chamar("/api/sessoes", { method: "POST",
-      body: JSON.stringify({ email: campoEmail(), senha: campoSenha() }) });
-    token = resposta.token;
-    document.getElementById("sessao").textContent = "Logado como " + resposta.nome + " (" + resposta.perfil + ")";
-    mostrar("Login ok.");
-  } catch (e) { mostrar(e.message); }
+    const r = await chamar("/api/sessoes", { method: "POST",
+      body: JSON.stringify({ email: $("campo-email").value, senha: $("campo-senha").value }) });
+    token = r.token;
+    usuario = { id: r.id, nome: r.nome, email: r.email, perfil: r.perfil };
+    $("campo-senha").value = "";
+    atualizarTela();
+    mostrar("Login ok. Você entrou como " + r.perfil + ".");
+  } catch (e) { mostrar(e.message, "erro"); }
 }
 
 function sair() {
   token = null;
-  document.getElementById("sessao").textContent = "Não logado.";
+  usuario = null;
+  inscricoesDaSessao = [];
+  $("lista-agenda").textContent = "";
+  $("meu-qrcode").textContent = "";
+  $("meu-codigo-texto").textContent = "";
+  renderInscricoes();
+  atualizarTela();
   mostrar("Sessão encerrada.");
 }
 
+// ---------- eventos e programação (público) ----------
+
 async function carregarEventos() {
-  const div = document.getElementById("lista-eventos");
+  const div = $("lista-eventos");
   try {
     const eventos = await chamar("/api/eventos");
-    div.innerHTML = "";
+    div.textContent = "";
+    if (eventos.length === 0) { div.textContent = "Nenhum evento publicado."; return; }
     eventos.forEach(ev => {
-      const p = document.createElement("p");
-      p.innerHTML = "<b>" + ev.titulo + "</b> — " + ev.inicio + " — ";
-      const botao = document.createElement("button");
-      botao.textContent = "Ver programação";
-      botao.onclick = () => verProgramacao(ev.id);
-      p.appendChild(botao);
-      div.appendChild(p);
+      const linha = el("div", { class: "item" },
+        el("div", { class: "titulo", texto: ev.titulo }),
+        el("div", { texto: formatarData(ev.inicio) + (ev.fim ? " até " + formatarData(ev.fim) : "") + (ev.local ? " — " + ev.local : "") }),
+        blocoId("ID do evento", ev.id),
+        el("div", { class: "linha-botoes" },
+          el("button", { class: "sec", texto: "Ver programação", onclick: () => verProgramacao(ev.id) })));
+      div.append(linha);
     });
   } catch (e) {
-    div.textContent = "Não deu para carregar os eventos: " + e.message + " (a API está rodando?)";
+    div.textContent = "Não deu para carregar os eventos: " + e.message;
   }
 }
 
 async function verProgramacao(eventoId) {
-  const div = document.getElementById("lista-atividades");
+  eventoAberto = eventoId;
+  const div = $("lista-atividades");
   try {
     const atividades = await chamar("/api/eventos/" + eventoId + "/atividades");
-    div.innerHTML = "";
+    div.textContent = "";
+    if (!ehParticipante()) {
+      div.append(el("p", { class: "ajuda", texto: usuario
+        ? "Só participantes podem se inscrever."
+        : "Entre como participante para se inscrever." }));
+    }
+    if (atividades.length === 0) { div.append("Este evento ainda não tem atividades."); return; }
     atividades.forEach(a => {
-      const p = document.createElement("p");
-      p.innerHTML = "<b>" + a.titulo + "</b> (" + a.tipo + ") — " + a.inicio +
-        " — " + (a.temVaga ? "tem vaga" : "sem vaga") + " — ";
-      const botao = document.createElement("button");
-      botao.textContent = "Inscrever-se";
-      botao.disabled = !a.temVaga;
-      botao.onclick = () => inscrever(a.id);
-      p.appendChild(botao);
-      div.appendChild(p);
+      const botao = el("button", { texto: "Inscrever-se", onclick: () => inscrever(a) });
+      botao.disabled = !a.temVaga || !ehParticipante();
+      div.append(el("div", { class: "item" },
+        el("div", { class: "titulo" }, a.titulo,
+          el("span", { class: "etiqueta", texto: a.tipo }),
+          el("span", { class: "etiqueta" + (a.temVaga ? "" : " semvaga"), texto: a.temVaga ? "tem vaga" : "sem vaga" })),
+        el("div", { texto: formatarData(a.inicio) + " até " + formatarData(a.fim) }),
+        blocoId("ID da atividade", a.id),
+        el("div", { class: "linha-botoes" }, botao)));
     });
   } catch (e) { div.textContent = e.message; }
 }
 
-async function inscrever(atividadeId) {
-  if (!token) { mostrar("Faça login antes de se inscrever."); return; }
+async function inscrever(atividade) {
+  if (!token) { mostrar("Faça login antes de se inscrever.", "erro"); return; }
   try {
-    const resposta = await chamar("/api/inscricoes", { method: "POST", body: JSON.stringify({ atividadeId }) });
-    mostrar("Inscrição confirmada!" + (resposta.avisos && resposta.avisos.length
-      ? " Aviso: " + resposta.avisos.join(" ") : ""));
-  } catch (e) { mostrar(e.message); }
+    const r = await chamar("/api/inscricoes", { method: "POST", body: JSON.stringify({ atividadeId: atividade.id }) });
+    inscricoesDaSessao.push({ titulo: atividade.titulo, id: r.id });
+    renderInscricoes();
+    mostrar("Inscrição confirmada em \"" + atividade.titulo + "\"! O ID da inscrição está em Minha área." +
+      (r.avisos && r.avisos.length ? " Aviso: " + r.avisos.join(" ") : ""));
+    verProgramacao(eventoAberto);
+  } catch (e) { mostrar(e.message, "erro"); }
 }
 
+// ---------- participante ----------
+
 async function verMinhaAgenda() {
-  if (!token) { mostrar("Faça login antes de ver sua agenda."); return; }
-  const div = document.getElementById("lista-agenda");
+  if (!token) return;
+  const div = $("lista-agenda");
   try {
     const itens = await chamar("/api/agenda");
+    div.textContent = "";
     if (itens.length === 0) { div.textContent = "Você ainda não tem atividades na agenda."; return; }
-    div.innerHTML = "";
     itens.forEach(item => {
-      const p = document.createElement("p");
-      p.textContent = item.inicio + " — " + item.titulo + " (" + item.situacaoInscricao + ")";
-      div.appendChild(p);
+      div.append(el("div", { class: "item" },
+        el("div", { class: "titulo" }, item.titulo,
+          el("span", { class: "etiqueta", texto: item.situacaoInscricao })),
+        el("div", { texto: formatarData(item.inicio) + " até " + formatarData(item.fim) }),
+        blocoId("ID da atividade", item.atividadeId)));
     });
   } catch (e) { div.textContent = e.message; }
 }
 
 async function gerarMeuQrCode() {
-  if (!token) { mostrar("Faça login antes de gerar seu código."); return; }
+  if (!token) { mostrar("Faça login antes de gerar seu código.", "erro"); return; }
   try {
-    const resposta = await chamar("/api/frequencia/meu-codigo");
-    const qr = qrcode(0, "M");
-    qr.addData(resposta.codigo);
-    qr.make();
-    document.getElementById("meu-qrcode").innerHTML = qr.createSvgTag(4);
-    mostrar("Pronto. Mostre este QR para o organizador escanear/ler.");
-  } catch (e) { mostrar(e.message); }
+    const r = await chamar("/api/frequencia/meu-codigo");
+    const area = $("meu-qrcode");
+    area.textContent = "";
+    if (typeof qrcode === "function") {
+      const qr = qrcode(0, "M");
+      qr.addData(r.codigo);
+      qr.make();
+      area.innerHTML = qr.createSvgTag(4); // SVG gerado pela biblioteca local (vendor/qrcode.js)
+    }
+    const texto = $("meu-codigo-texto");
+    texto.textContent = "";
+    texto.append(blocoId("Código", r.codigo));
+    mostrar("Pronto. Mostre este QR ao organizador ou envie o código a ele.");
+  } catch (e) { mostrar(e.message, "erro"); }
+}
+
+function renderInscricoes() {
+  const div = $("lista-inscricoes");
+  div.textContent = "";
+  if (inscricoesDaSessao.length === 0) {
+    div.append(el("span", { class: "ajuda", texto: "Nenhuma inscrição feita nesta sessão." }));
+    return;
+  }
+  inscricoesDaSessao.forEach(i => {
+    div.append(el("div", { class: "item" },
+      el("div", { class: "titulo", texto: i.titulo }),
+      blocoId("ID da inscrição", i.id),
+      el("div", { class: "linha-botoes" },
+        el("button", { class: "sec", texto: "Ver minha presença", onclick: () => situacaoDoParticipante(i) }))));
+  });
+}
+
+async function situacaoDoParticipante(inscricao) {
+  try {
+    const r = await chamar("/api/frequencia/" + inscricao.id + "/situacao");
+    resultado("resultado-situacao-part", inscricao.titulo + ": " + (r.presente ? "presença validada" : "presença ainda não validada"));
+  } catch (e) { resultado("resultado-situacao-part", e.message, "erro"); }
+}
+
+// ---------- organizador ----------
+
+async function org_carregarEventos() {
+  const sel = $("sel-evento");
+  try {
+    const eventos = await chamar("/api/eventos");
+    sel.textContent = "";
+    eventos.forEach(ev => sel.append(el("option", { value: ev.id, texto: ev.titulo })));
+    if (eventos.length === 0) sel.append(el("option", { value: "", texto: "(nenhum evento publicado)" }));
+    await org_carregarAtividades();
+  } catch (e) { mostrar(e.message, "erro"); }
+}
+
+async function org_carregarAtividades() {
+  const sel = $("sel-atividade");
+  sel.textContent = "";
+  const eventoId = $("sel-evento").value;
+  if (!eventoId) { org_atividadeMudou(); return; }
+  try {
+    const atividades = await chamar("/api/eventos/" + eventoId + "/atividades");
+    atividades.forEach(a => sel.append(el("option", { value: a.id, texto: a.titulo + " (" + formatarData(a.inicio) + ")" })));
+    if (atividades.length === 0) sel.append(el("option", { value: "", texto: "(sem atividades)" }));
+  } catch (e) { mostrar(e.message, "erro"); }
+  org_atividadeMudou();
+}
+
+function org_atividadeMudou() {
+  const id = $("sel-atividade").value;
+  const area = $("org-id-atividade");
+  area.textContent = "";
+  if (id) area.append(blocoId("ID da atividade", id));
+  $("sel-participante").textContent = "";
+  $("sel-participante").append(el("option", { value: "", texto: "(carregue os inscritos)" }));
 }
 
 async function registrarCheckin() {
-  if (!token) { mostrar("Faça login antes."); return; }
-  const resultado = document.getElementById("resultado-checkin");
   try {
     const corpo = {
-      codigo: document.getElementById("campo-codigo-checkin").value,
-      atividadeId: document.getElementById("campo-atividade-checkin").value,
-      tipo: document.getElementById("campo-tipo-checkin").value
+      codigo: $("campo-codigo-checkin").value.trim(),
+      atividadeId: exigirUuid($("sel-atividade").value, "Atividade"),
+      tipo: $("campo-tipo-checkin").value
     };
+    if (!corpo.codigo) throw new Error("Cole o código do QR do participante.");
     await chamar("/api/frequencia/checkin", { method: "POST", body: JSON.stringify(corpo) });
-    resultado.textContent = "Presença registrada!";
-  } catch (e) { resultado.textContent = e.message; }
+    resultado("resultado-checkin", "Presença registrada (" + (corpo.tipo === "CHECK_IN" ? "entrada" : "saída") + ")!");
+  } catch (e) { resultado("resultado-checkin", e.message, "erro"); }
+}
+
+async function org_carregarInscritos() {
+  try {
+    const atividadeId = exigirUuid($("sel-atividade").value, "Atividade");
+    const r = await buscarArquivo("/api/atividades/" + atividadeId + "/relatorio/inscricoes");
+    const texto = (await r.text()).replace(/^﻿/, "");
+    const linhas = texto.split(/\r?\n/).filter(l => l.trim()).slice(1); // pula o cabeçalho
+    const sel = $("sel-participante");
+    sel.textContent = "";
+    // colunas: atividade;participanteId;nome;email;situacao
+    linhas.forEach(l => {
+      const c = l.split(";").map(x => x.replace(/^"|"$/g, ""));
+      if (c.length >= 5) sel.append(el("option", { value: c[1], texto: c[2] + " — " + c[3] + " (" + c[4] + ")" }));
+    });
+    if (!sel.children.length) sel.append(el("option", { value: "", texto: "(ninguém inscrito nesta atividade)" }));
+    resultado("resultado-manual", linhas.length + " inscrito(s) carregado(s).");
+  } catch (e) { resultado("resultado-manual", e.message, "erro"); }
 }
 
 async function registrarManual() {
-  if (!token) { mostrar("Faça login antes."); return; }
-  const resultado = document.getElementById("resultado-manual");
   try {
+    const colado = $("campo-participante-manual").value.trim();
     const corpo = {
-      participanteId: document.getElementById("campo-participante-manual").value,
-      atividadeId: document.getElementById("campo-atividade-manual").value
+      participanteId: exigirUuid(colado || $("sel-participante").value, "Participante"),
+      atividadeId: exigirUuid($("sel-atividade").value, "Atividade")
     };
     await chamar("/api/frequencia/manual", { method: "POST", body: JSON.stringify(corpo) });
-    resultado.textContent = "Presença registrada manualmente!";
-  } catch (e) { resultado.textContent = e.message; }
+    resultado("resultado-manual", "Presença registrada manualmente!");
+  } catch (e) { resultado("resultado-manual", e.message, "erro"); }
 }
 
 async function consultarSituacao() {
-  if (!token) { mostrar("Faça login antes."); return; }
-  const resultado = document.getElementById("resultado-situacao");
   try {
-    const inscricaoId = document.getElementById("campo-inscricao-situacao").value;
-    const resposta = await chamar("/api/frequencia/" + inscricaoId + "/situacao");
-    resultado.textContent = resposta.presente ? "Presente" : "Ainda não presente";
-  } catch (e) { resultado.textContent = e.message; }
+    const id = exigirUuid($("campo-inscricao-situacao").value, "ID da inscrição");
+    const r = await chamar("/api/frequencia/" + id + "/situacao");
+    resultado("resultado-situacao", r.presente ? "Presente" : "Ainda não presente");
+  } catch (e) { resultado("resultado-situacao", e.message, "erro"); }
+}
+
+async function baixarRelatorio(tipo) {
+  try {
+    const atividadeId = exigirUuid($("sel-atividade").value, "Atividade");
+    const r = await buscarArquivo("/api/atividades/" + atividadeId + "/relatorio/" + tipo);
+    const url = URL.createObjectURL(await r.blob());
+    const a = el("a", { href: url, download: "relatorio_" + tipo + ".csv" });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    resultado("resultado-relatorio", "Relatório baixado.");
+  } catch (e) { resultado("resultado-relatorio", e.message, "erro"); }
 }
 
 carregarEventos();
